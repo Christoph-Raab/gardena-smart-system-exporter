@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	scrapeDuration = promauto.NewSummaryVec(prometheus.SummaryOpts{
+	scrapeDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: metricNameSpace,
 		Name:      "gathering_duration",
 		Help:      "The duration the gathering of all data took",
