@@ -11,17 +11,19 @@ import (
 )
 
 func main() {
-	var gatewayIp string
-	flag.StringVar(&gatewayIp, "gateway-ip", "None", "Ip of the Smart System Gateway, e.g. 192.168.178.24")
+	var gatewayIP string
+	var metricInterval int
+	flag.StringVar(&gatewayIP, "gateway-ip", metric.DefaultGatewayIP, "Ip of the Smart System Gateway, e.g. 192.168.178.24")
+	flag.IntVar(&metricInterval, "metric-interval", 30, "Time between each metric generation run in seconds")
 	flag.Parse()
 
 	log.Println("Start serving metrics...")
 	go func() {
 		for {
-			if ok := metric.Generate(gatewayIp); !ok {
+			if ok := metric.Generate(gatewayIP); !ok {
 				log.Println("Metric creation failed!")
 			}
-			time.Sleep(time.Duration(30) * time.Second)
+			time.Sleep(time.Duration(metricInterval) * time.Second)
 		}
 	}()
 

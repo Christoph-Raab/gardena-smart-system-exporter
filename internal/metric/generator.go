@@ -7,8 +7,9 @@ import (
 )
 
 const metricNameSpace = "gardena_smart_system"
+const DefaultGatewayIP = "None"
 
-func Generate(gatewayIp string) bool {
+func Generate(gatewayIP string) bool {
 	timer := prometheus.NewTimer(scrapeDuration.WithLabelValues())
 	defer timer.ObserveDuration()
 
@@ -19,9 +20,9 @@ func Generate(gatewayIp string) bool {
 	}
 	hostHealth.WithLabelValues("api", gardenaApiHealthUrl).Set(float64(gardenaApiUp))
 
-	if gatewayIp != "None" {
+	if gatewayIP != DefaultGatewayIP {
 		gardenaGatewayUp := 0
-		gatewayUrl := "http://" + gatewayIp
+		gatewayUrl := "http://" + gatewayIP
 		if up := checkHealth(gatewayUrl); up {
 			gardenaGatewayUp = 1
 		}
