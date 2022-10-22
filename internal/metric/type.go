@@ -5,18 +5,27 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+const metricNameSpace = "gardena_smart_system"
+
 var (
-	scrapeDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	endpointHealthCheckDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: metricNameSpace,
-		Name:      "gathering_duration",
-		Help:      "The duration the gathering of all data took",
+		Name:      "endpoint_health_duration",
+		Help:      "The duration all endpoint health checks took",
 	}, []string{})
 	hostHealth = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: metricNameSpace,
-		Name:      "host_health",
-		Help:      "Indicates if a host is healthy",
+		Name:      "endpoint_health",
+		Help:      "Indicates if a endpoint is healthy",
 	}, []string{
-		"host",
+		"endpoint",
 		"addr",
+	})
+	locationsTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: metricNameSpace,
+		Name:      "locations_total",
+		Help:      "The number of locations",
+	}, []string{
+		"endpoint",
 	})
 )
