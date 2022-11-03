@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestAPIInitialize(t *testing.T) {
@@ -50,6 +51,12 @@ func TestAPIInitialize(t *testing.T) {
 	}
 	if apiStub.userID != expectedUserID {
 		log.Fatalf("Wrong user id, expected %v, got %v", expectedUserID, apiStub.userID)
+	}
+
+	// Check that expire time is not 0 or after now+expire_in because of time passed between function call and test
+	// should be sufficient and bypasses need for mocking/injecting time.Now()
+	if apiStub.tokenExpAt.IsZero() || apiStub.tokenExpAt.After(time.Now().Add(time.Second*time.Duration(expectedExpireIn))) {
+		log.Fatalf("Wrong tokenExpAt, got '%v', now is '%v'", apiStub.tokenExpAt, time.Now())
 	}
 }
 
@@ -98,6 +105,39 @@ func TestLoadLocationsFromApi(t *testing.T) {
 	locationOne := allLocations.Data[0].LocationFromApi
 	if !reflect.DeepEqual(locationOne, expectedLocation) {
 		t.Fatalf("Expected '%v', got '%v'", expectedLocation, locationOne)
+	}
+}
+
+func TestAPI_authenticateRefreshExpiredToken(t *testing.T) {
+	expectedAccessToken := "abc123def456"
+	expectedTokenType := "Bearer"
+	expectedExpireIn := 86399
+	authServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{
+				"access_token": "` + expectedAccessToken + `",
+				"token_type": "` + expectedTokenType + `",
+				"expires_in": ` + fmt.Sprint(expectedExpireIn) + `
+			}`))
+	}))
+	defer authServer.Close()
+
+	api := API{
+		baseURL:    "www.baseurl.com",
+		authUrl:    authServer.URL,
+		httpClient: &http.Client{},
+
+		clientID:     "abc",
+		clientSecret: "def",
+		accessToken:  expectedTokenType + " 987zyx",
+		tokenExpAt:   time.Now().Add(time.Hour * -24),
+	}
+	if err := api.authenticate(); err != nil {
+		log.Fatalf("Authentication failed with err:\n %v", err)
+	}
+
+	if api.accessToken != expectedTokenType+" "+expectedAccessToken {
+		log.Fatalf("Access token wasn't refreshed, expected '%s', got '%v'", expectedTokenType+" "+expectedAccessToken, api.accessToken)
 	}
 }
 
