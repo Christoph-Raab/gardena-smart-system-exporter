@@ -29,6 +29,7 @@ type API struct {
 	clientSecret string
 	accessToken  string
 	userID       string
+	tokenExpAt   time.Time
 }
 
 type authResponse struct {
@@ -108,7 +109,7 @@ func (api *API) authenticate() error {
 	if api.clientID == "" || api.clientSecret == "" {
 		return fmt.Errorf("api not initialized, client-id or client-secret was empty")
 	}
-	if api.accessToken == "" {
+	if api.accessToken == "" || !api.tokenExpAt.IsZero() && time.Now().After(api.tokenExpAt.Add(time.Duration(-3600))) {
 		res, err := api.httpClient.PostForm(api.authUrl, url.Values{
 			"grant_type":    {"client_credentials"},
 			"client_id":     {api.clientID},
@@ -128,6 +129,7 @@ func (api *API) authenticate() error {
 		}
 		api.userID = auth.UserID
 		api.accessToken = auth.TokenType + " " + auth.AccessToken
+		api.tokenExpAt = time.Now().Add(time.Second * time.Duration(auth.ExpiresIn))
 	}
 	return nil
 }
