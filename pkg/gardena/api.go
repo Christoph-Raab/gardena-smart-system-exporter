@@ -3,10 +3,11 @@ package gardena
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -119,7 +120,7 @@ func (api *API) authenticate() error {
 			return fmt.Errorf("unable to request access token, got err %w", err)
 		}
 		defer res.Body.Close()
-		body, err := ioutil.ReadAll(res.Body)
+		body, err := io.ReadAll(res.Body)
 		if err != nil {
 			return fmt.Errorf("unable to read authentication response, got error: %w", err)
 		}
@@ -171,7 +172,7 @@ func (api *API) GetLocations() (*LocationsFromApi, error) {
 		return nil, fmt.Errorf("unable to read response, got status code %d, response: %v", res.StatusCode, res)
 	}
 
-	responseBody, err := ioutil.ReadAll(res.Body)
+	responseBody, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read response, got error:\n %w", err)
 	}
@@ -185,9 +186,10 @@ func (api *API) GetLocations() (*LocationsFromApi, error) {
 
 // readFromSecretFile reads the file on the given path and returns the value as string
 func readFromSecretFile(path string) (string, error) {
-	val, err := ioutil.ReadFile(path)
+	val, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("unable to read secret file at '%s', got err:\n '%w'", path, err)
 	}
-	return string(val), nil
+	s := string(val)
+	return strings.TrimSuffix(s, "\n"), nil
 }
