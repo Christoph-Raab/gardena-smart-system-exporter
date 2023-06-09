@@ -38,7 +38,7 @@ func TestAPIInitialize(t *testing.T) {
 		WithSecretFilePath(secretFilePath).
 		Initialize()
 	if err != nil {
-		log.Fatalf("Unable to initialize api, got err %v", err)
+		log.Fatalf("Unable to initialize api, got err:\n%v", err)
 	}
 	if apiStub.clientID != expectedClientID {
 		log.Fatalf("Wrong clientID, expected %s, got %s", expectedClientID, apiStub.clientID)
@@ -86,26 +86,72 @@ func TestLoadLocationsFromApi(t *testing.T) {
 		WithSecretFilePath(secretFilePath).
 		Initialize()
 	if err != nil {
-		t.Fatalf("Unable to initialize api, got err: ")
+		t.Fatalf("Unable to initialize api, got err:\n%v", err)
 	}
 
 	allLocations, err := apiStub.GetLocations()
 	if err != nil {
-		t.Fatalf("Unable to query locations, got err: ")
+		t.Fatalf("Unable to query locations, got err:\n%v", err)
 	}
 	if len(allLocations.Data) != 1 {
 		t.Fatalf("List of locations should be 1, is '%v'", len(allLocations.Data))
 	}
 
-	expectedLocation := LocationFromApi{
+	expectedLocation := Location{
 		Id:   "123abc",
 		Type: typeLocation,
 	}
 	expectedLocation.Attributes.Name = "My Garden"
-	locationOne := allLocations.Data[0].LocationFromApi
+	locationOne := allLocations.Data[0].Location
 	if !reflect.DeepEqual(locationOne, expectedLocation) {
 		t.Fatalf("Expected '%v', got '%v'", expectedLocation, locationOne)
 	}
+}
+
+func TestGetInitialStateFor(t *testing.T) {
+	authServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"access_token": "abc123def456"}`))
+	}))
+	defer authServer.Close()
+
+	locationsProvider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		locationResponse, err := os.ReadFile("../../test/location.json")
+		if err != nil {
+			log.Fatalf("Unable to read location.json, got err:\n%v", err)
+		}
+		w.Write(locationResponse)
+	}))
+	defer locationsProvider.Close()
+
+	secretFilePath := setupSecretFilesWithTmpDir("<some-client-id>", "<some-client-secret>")
+	defer os.RemoveAll(secretFilePath)
+
+	apiStub, err := NewAPI().
+		WithBaseURL(locationsProvider.URL).
+		WithAuthURL(authServer.URL).
+		WithSecretFilePath(secretFilePath).
+		Initialize()
+	if err != nil {
+		t.Fatalf("Unable to initialize api, got err:\n%v", err)
+	}
+
+	l := Location{}
+	s, err := apiStub.GetInitialStateFor(l)
+	if err != nil {
+		t.Fatalf("Unable to query locations, got err:\n%v", err)
+	}
+	expectedLocationID := "location-1-id"
+	if s.Data.Id != expectedLocationID {
+		t.Fatalf("Expected '%v', got '%v'", expectedLocationID, s.Data.Id)
+	}
+
+	expectedDeviceLength := 6
+	if len(s.Included) != expectedDeviceLength {
+		t.Fatalf("Expected 'Included' to have length of %v, got %v", expectedDeviceLength, len(s.Included))
+	}
+
 }
 
 func TestAPI_authenticateRefreshExpiredToken(t *testing.T) {

@@ -24,18 +24,18 @@ func main() {
 		WithSecretFilePath(secretFilePath).
 		Initialize()
 	if err != nil {
-		log.Fatalf("unable to initialize the api, got error:\n %v", err)
+		log.Fatalf("unable to initialize the api, got error:\n%v", err)
 	}
 
-	generator := metric.NewGenerator(*api, gatewayIP)
-	if err := generator.InitializeLocationsMetrics(); err != nil {
-		log.Fatalf("Unable to setup initial location metrics, got err:\n %v", err)
+	g := metric.NewGenerator(*api, gatewayIP)
+	if err := g.InitializeLocationsMetrics(); err != nil {
+		log.Fatalf("Unable to setup initial location metrics, got err:\n%v", err)
 	}
 
 	log.Println("Start serving metrics...")
 	go func() {
 		for {
-			generator.MonitorHealthOfEndpoints()
+			g.MonitorHealthOfEndpoints()
 			time.Sleep(time.Duration(metricInterval) * time.Second)
 		}
 	}()
