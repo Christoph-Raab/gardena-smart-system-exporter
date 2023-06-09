@@ -162,7 +162,7 @@ func (api *API) query(path string) (*http.Response, error) {
 }
 
 // GetLocations queries the locations of the LocationsURL and returns the result as json
-func (api *API) GetLocations() (*LocationsFromApi, error) {
+func (api *API) GetLocations() (*Locations, error) {
 	res, err := api.query(LocationsURL)
 	if err != nil {
 		return nil, fmt.Errorf("querying for locations failed, got err:\n %w", err)
@@ -174,14 +174,36 @@ func (api *API) GetLocations() (*LocationsFromApi, error) {
 
 	responseBody, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read response, got error:\n %w", err)
+		return nil, fmt.Errorf("unable to read response, got error:\n%w", err)
 	}
 
-	locations := LocationsFromApi{}
+	locations := Locations{}
 	if err := json.Unmarshal(responseBody, &locations); err != nil {
-		return nil, fmt.Errorf("unmarshal of locations response failed, got err:\n %w", err)
+		return nil, fmt.Errorf("unmarshal of locations response failed, got err:\n%w", err)
 	}
 	return &locations, nil
+}
+
+func (api *API) GetInitialStateFor(location Location) (*State, error) {
+	res, err := api.query(LocationsURL + "/" + location.Id)
+	if err != nil {
+		return nil, fmt.Errorf("unable to query location %s, got err:\n%w", location.Id, err)
+	}
+
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("unable to read response, got status code %d, response: %v", res.StatusCode, res)
+	}
+
+	responseBody, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal of locations response failed, got err:\n%w", err)
+	}
+
+	state := State{}
+	if err := json.Unmarshal(responseBody, &state); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal json state, got error: %v", res)
+	}
+	return &state, nil
 }
 
 // readFromSecretFile reads the file on the given path and returns the value as string
